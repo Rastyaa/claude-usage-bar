@@ -1,0 +1,44 @@
+{
+    "configurations": [
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:custom-touchbar}",
+            "name": "Debug CustomTouchBar",
+            "target": "CustomTouchBar",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug CustomTouchBar"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:custom-touchbar}",
+            "name": "Release CustomTouchBar",
+            "target": "CustomTouchBar",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release CustomTouchBar"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:menubar-claude-usage}",
+            "name": "Debug ClaudeUsageBar",
+            "target": "ClaudeUsageBar",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug ClaudeUsageBar"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:menubar-claude-usage}",
+            "name": "Release ClaudeUsageBar",
+            "target": "ClaudeUsageBar",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release ClaudeUsageBar"
+        }
+    ]
+}
