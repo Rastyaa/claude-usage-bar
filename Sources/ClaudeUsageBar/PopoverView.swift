@@ -54,6 +54,62 @@ private struct UsageSection: View {
     }
 }
 
+// ─── Sign-in screen (shown when no Claude credentials are found) ─────────────
+
+private struct SignInView: View {
+    let onRetry: () -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Spacer()
+
+            Image(systemName: "person.badge.key.fill")
+                .font(.system(size: 48, weight: .light))
+                .foregroundColor(.white.opacity(0.25))
+                .padding(.bottom, 20)
+
+            Text("Not signed in")
+                .font(.system(size: 17, weight: .bold))
+                .foregroundColor(.white)
+                .padding(.bottom, 8)
+
+            Text("Claude Code credentials not found on this Mac.\nSign in at claude.ai, then click Try Again.")
+                .font(.system(size: 12))
+                .foregroundColor(.white.opacity(0.5))
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 24)
+                .padding(.bottom, 28)
+
+            Button {
+                NSWorkspace.shared.open(URL(string: "https://claude.ai")!)
+            } label: {
+                Text("Open claude.ai")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.black)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 9)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(Color(red: 0.96, green: 0.62, blue: 0.10)))
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, 24)
+            .padding(.bottom, 10)
+
+            Button("Try Again", action: onRetry)
+                .buttonStyle(.plain)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(.white.opacity(0.5))
+                .padding(.bottom, 4)
+
+            Spacer()
+        }
+        .frame(width: 280, height: 460)
+        .background(Color(red: 0.10, green: 0.10, blue: 0.12))
+    }
+}
+
 // ─── Popover root ────────────────────────────────────────────────────────────
 
 struct PopoverView: View {
@@ -62,6 +118,11 @@ struct PopoverView: View {
     private var usage: UsageData { manager.usage }
 
     var body: some View {
+        if manager.tokenMissing {
+            SignInView {
+                Task { await manager.fetch() }
+            }
+        } else {
         VStack(alignment: .leading, spacing: 14) {
 
             // Header
@@ -153,6 +214,7 @@ struct PopoverView: View {
         .padding(.bottom, 16)
         .frame(width: 280, height: 460)
         .background(Color(red: 0.10, green: 0.10, blue: 0.12))
+        } // else
     }
 
     private func rowItem(label: String, value: String) -> some View {

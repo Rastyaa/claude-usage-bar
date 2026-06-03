@@ -70,6 +70,7 @@ final class UsageManager: ObservableObject {
     @Published private(set) var usage: UsageData = .placeholder
     @Published private(set) var isLoading = false
     @Published private(set) var errorMessage: String?
+    @Published private(set) var tokenMissing = false
 
     /// Called on the main actor after every state change so the AppDelegate
     /// can refresh the menu-bar title.
@@ -156,10 +157,11 @@ final class UsageManager: ObservableObject {
         defer { isLoading = false; publish() }
 
         guard let token = Self.readOAuthToken() else {
-            errorMessage = "No OAuth token found in Keychain. Sign in with Claude Code."
-            if usage.lastUpdated == "never" { usage = .mock }   // keep UI usable
+            tokenMissing = true
+            errorMessage = nil
             return
         }
+        tokenMissing = false
 
         var request = URLRequest(url: endpoint)
         request.httpMethod = "GET"

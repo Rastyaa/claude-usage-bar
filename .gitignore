@@ -5,6 +5,8 @@
 /.build
 /Packages
 *.app
+*.dmg
+AppIcon.iconset/
 
 # Xcode
 xcuserdata/

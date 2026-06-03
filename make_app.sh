@@ -20,6 +20,7 @@ mkdir -p "$APP/Contents/Resources"
 
 cp "$BUILD_DIR/$APP_NAME" "$APP/Contents/MacOS/$APP_NAME"
 cp Info.plist "$APP/Contents/Info.plist"
+[ -f Resources/AppIcon.icns ] && cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 
 # Ad-hoc codesign so the Keychain ACL + notifications behave consistently.
 codesign --force --deep --sign - "$APP" 2>/dev/null || \

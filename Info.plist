@@ -6,8 +6,10 @@
     <string>ClaudeUsageBar</string>
     <key>CFBundleDisplayName</key>
     <string>Claude Usage</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
     <key>CFBundleIdentifier</key>
-    <string>com.customtouchbar.claudeusagebar</string>
+    <string>io.github.rtoedz.claudeusagebar</string>
     <key>CFBundleExecutable</key>
     <string>ClaudeUsageBar</string>
     <key>CFBundlePackageType</key>
