@@ -16,5 +16,8 @@ DerivedData/
 .vscode/
 .claude/
 
+# Local Claude instructions (not for public repo)
+CLAUDE.md
+
 # Credentials
 .netrc
