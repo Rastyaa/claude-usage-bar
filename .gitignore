@@ -1,9 +1,20 @@
+# macOS
 .DS_Store
+
+# Swift build artifacts
 /.build
 /Packages
-/ClaudeUsageBar.app
+*.app
+
+# Xcode
 xcuserdata/
 DerivedData/
 .swiftpm/configuration/registries.json
 .swiftpm/xcode/package.xcworkspace/contents.xcworkspacedata
+
+# IDE / local tooling
+.vscode/
+.claude/
+
+# Credentials
 .netrc

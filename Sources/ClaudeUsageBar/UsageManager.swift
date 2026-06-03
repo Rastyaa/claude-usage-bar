@@ -166,7 +166,7 @@ final class UsageManager: ObservableObject {
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("oauth-2025-04-20", forHTTPHeaderField: "anthropic-beta")
-        request.setValue("custom-touchbar/1.0", forHTTPHeaderField: "User-Agent")
+        request.setValue("ClaudeUsageBar/1.0", forHTTPHeaderField: "User-Agent")
 
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
