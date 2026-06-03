@@ -19,7 +19,7 @@ fi
 
 echo "▶ Staging DMG contents…"
 STAGING=$(mktemp -d)
-trap "rm -rf '$STAGING' '$TMP_DMG' 2>/dev/null; true" EXIT
+trap "rm -rf '$STAGING' '$TMP_DMG' '/tmp/dmg_mount_$$' 2>/dev/null; true" EXIT
 
 cp -R "$APP" "$STAGING/"
 ln -s /Applications "$STAGING/Applications"
@@ -32,17 +32,19 @@ hdiutil create \
     "$TMP_DMG" > /dev/null
 
 echo "▶ Mounting to set Finder layout…"
-MOUNT=$(hdiutil attach -readwrite -noverify "$TMP_DMG" | awk 'END{print $NF}')
+MOUNT="/tmp/dmg_mount_$$"
+mkdir -p "$MOUNT"
+hdiutil attach -readwrite -noverify -mountpoint "$MOUNT" "$TMP_DMG" > /dev/null
 
-osascript <<APPLESCRIPT
+osascript <<APPLESCRIPT 2>/dev/null || true
 tell application "Finder"
     tell disk "${VOLUME}"
         open
+        delay 1
         set current view of container window to icon view
         set toolbar visible of container window to false
         set statusbar visible of container window to false
         set bounds of container window to {200, 120, 680, 400}
-        set iconSize of icon view options of container window to 128
         set arrangement of icon view options of container window to not arranged
         set position of item "${APP_NAME}.app" of container window to {120, 150}
         set position of item "Applications" of container window to {360, 150}
@@ -56,7 +58,6 @@ APPLESCRIPT
 # Set volume icon from the app's icns (best-effort)
 if [ -f "Resources/AppIcon.icns" ]; then
     cp "Resources/AppIcon.icns" "${MOUNT}/.VolumeIcon.icns"
-    # SetFile -a C sets the custom icon bit; requires Xcode full install — skip gracefully
     SetFile -a C "$MOUNT" 2>/dev/null || true
 fi
 
