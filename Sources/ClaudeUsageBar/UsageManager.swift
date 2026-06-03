@@ -26,8 +26,10 @@ private struct RawUsageResponse: Decodable {
 struct UsageData {
     var sessionPercent: Double      // 61.0
     var sessionResetIn: String      // "2h 8m"
+    var sessionActive: Bool         // false when resets_at is nil (no active session)
     var weeklyPercent: Double       // 14.0
     var weeklyResetsAt: String      // "Sat 9:00 AM"
+    var weeklyActive: Bool          // false when resets_at is nil
     var dailyRoutines: Int          // 0
     var dailyRoutinesMax: Int       // 5
     var usageCredits: Bool          // false
@@ -35,16 +37,16 @@ struct UsageData {
 
     /// Shown before the first successful fetch.
     static let placeholder = UsageData(
-        sessionPercent: 0, sessionResetIn: "—",
-        weeklyPercent: 0, weeklyResetsAt: "—",
+        sessionPercent: 0, sessionResetIn: "—", sessionActive: false,
+        weeklyPercent: 0, weeklyResetsAt: "—", weeklyActive: false,
         dailyRoutines: 0, dailyRoutinesMax: 5,
         usageCredits: false, lastUpdated: "never"
     )
 
     /// Fallback so the UI is testable even when the live fetch fails.
     static let mock = UsageData(
-        sessionPercent: 61, sessionResetIn: "2h 8m",
-        weeklyPercent: 14, weeklyResetsAt: "Sat 9:00 AM",
+        sessionPercent: 61, sessionResetIn: "2h 8m", sessionActive: true,
+        weeklyPercent: 14, weeklyResetsAt: "Sat 9:00 AM", weeklyActive: true,
         dailyRoutines: 0, dailyRoutinesMax: 5,
         usageCredits: false, lastUpdated: "mock data"
     )
@@ -56,9 +58,10 @@ struct UsageData {
         return "🟢"
     }
 
-    /// e.g. "🟠 61% · 2h 8m"
+    /// e.g. "🟠 61% · 2h 8m" or "○ No session" when inactive
     var menuBarTitle: String {
-        "\(emoji) \(Int(sessionPercent.rounded()))% · \(sessionResetIn)"
+        guard sessionActive else { return "○ No session" }
+        return "\(emoji) \(Int(sessionPercent.rounded()))% · \(sessionResetIn)"
     }
 }
 
@@ -206,9 +209,11 @@ final class UsageManager: ObservableObject {
         UsageData(
             sessionPercent: raw.five_hour.utilization,
             sessionResetIn: relativeUntil(raw.five_hour.resets_at),
+            sessionActive: raw.five_hour.resets_at != nil,
             weeklyPercent: raw.seven_day.utilization,
             weeklyResetsAt: absoluteReset(raw.seven_day.resets_at),
-            dailyRoutines: 0,        // not exposed by the usage endpoint
+            weeklyActive: raw.seven_day.resets_at != nil,
+            dailyRoutines: 0,
             dailyRoutinesMax: 5,
             usageCredits: raw.extra_usage?.is_enabled ?? false,
             lastUpdated: "just now"

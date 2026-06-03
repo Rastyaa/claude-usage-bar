@@ -33,6 +33,8 @@ private struct UsageSection: View {
     let title: String
     let percent: Double
     let caption: String
+    var active: Bool = true
+    var inactiveMessage: String = "Start a conversation to begin tracking"
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -42,14 +44,24 @@ private struct UsageSection: View {
                     .foregroundColor(.white.opacity(0.5))
                     .tracking(0.8)
                 Spacer()
-                Text("\(Int(percent.rounded()))%")
+                Text(active ? "\(Int(percent.rounded()))%" : "0%")
                     .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .foregroundColor(usageColor(percent))
+                    .foregroundColor(active ? usageColor(percent) : .white.opacity(0.25))
             }
-            UsageBar(percent: percent)
-            Text(caption)
-                .font(.system(size: 11))
-                .foregroundColor(.white.opacity(0.45))
+            UsageBar(percent: active ? percent : 0)
+            if active {
+                Text(caption)
+                    .font(.system(size: 11))
+                    .foregroundColor(.white.opacity(0.45))
+            } else {
+                HStack(spacing: 4) {
+                    Image(systemName: "info.circle")
+                        .font(.system(size: 10))
+                    Text(inactiveMessage)
+                        .font(.system(size: 11))
+                }
+                .foregroundColor(.white.opacity(0.35))
+            }
         }
     }
 }
@@ -149,13 +161,17 @@ struct PopoverView: View {
 
             UsageSection(title: "SESSION",
                          percent: usage.sessionPercent,
-                         caption: "Resets in \(usage.sessionResetIn)")
+                         caption: "Resets in \(usage.sessionResetIn)",
+                         active: usage.sessionActive,
+                         inactiveMessage: "Start a conversation to begin your session")
 
             Divider().overlay(Color.white.opacity(0.1))
 
             UsageSection(title: "WEEKLY",
                          percent: usage.weeklyPercent,
-                         caption: "Resets \(usage.weeklyResetsAt)")
+                         caption: "Resets \(usage.weeklyResetsAt)",
+                         active: usage.weeklyActive,
+                         inactiveMessage: "No weekly usage recorded yet")
 
             Divider().overlay(Color.white.opacity(0.1))
 
