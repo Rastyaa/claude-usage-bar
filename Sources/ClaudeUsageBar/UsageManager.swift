@@ -179,7 +179,11 @@ final class UsageManager: ObservableObject {
                 errorMessage = "No HTTP response"; return
             }
             guard http.statusCode == 200 else {
-                errorMessage = "API returned \(http.statusCode)"
+                switch http.statusCode {
+                case 429: errorMessage = "Rate limited — will retry automatically"
+                case 401: errorMessage = "Token expired — please sign in again"
+                default:  errorMessage = "API error \(http.statusCode)"
+                }
                 if usage.lastUpdated == "never" { usage = .mock }
                 return
             }
@@ -262,12 +266,15 @@ final class UsageManager: ObservableObject {
         return f.string(from: date)
     }
 
-    /// "just now" / "2m ago" — how long since the last successful fetch.
+    /// "just now" / "2m ago" / "1h 30m ago" — how long since the last successful fetch.
     private static func relativeSince(_ date: Date) -> String {
         let secs = Int(-date.timeIntervalSinceNow)
         if secs < 10 { return "just now" }
         if secs < 60 { return "\(secs)s ago" }
-        return "\(secs / 60)m ago"
+        let mins = secs / 60
+        if mins < 60 { return "\(mins)m ago" }
+        let h = mins / 60, m = mins % 60
+        return m > 0 ? "\(h)h \(m)m ago" : "\(h)h ago"
     }
 
     // MARK: Token
