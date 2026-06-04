@@ -68,8 +68,41 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard let button = statusItem.button else { return }
         button.title = "◌ …"
         button.font = NSFont.monospacedDigitSystemFont(ofSize: 13, weight: .medium)
-        button.action = #selector(togglePopover)
+        button.action = #selector(handleClick)
+        button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         button.target = self
+    }
+
+    @objc private func handleClick() {
+        guard let event = NSApp.currentEvent else { return }
+        if event.type == .rightMouseUp {
+            showContextMenu()
+        } else {
+            togglePopover()
+        }
+    }
+
+    // MARK: Context menu (right-click)
+
+    private func showContextMenu() {
+        let menu = NSMenu()
+
+        let refreshItem = NSMenuItem(title: "Refresh", action: #selector(refreshData), keyEquivalent: "")
+        refreshItem.target = self
+        menu.addItem(refreshItem)
+
+        menu.addItem(.separator())
+
+        let quitItem = NSMenuItem(title: "Quit Claude Usage", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "")
+        menu.addItem(quitItem)
+
+        statusItem.menu = menu
+        statusItem.button?.performClick(nil)
+        statusItem.menu = nil
+    }
+
+    @objc private func refreshData() {
+        Task { await manager.fetch() }
     }
 
     // MARK: Popover
@@ -78,7 +111,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         popover.behavior = .transient
         popover.animates = true
         let host = NSHostingController(rootView: PopoverView(manager: manager))
-        // Fix explicit size so NSPopover doesn't auto-position above the menu bar.
         host.view.setFrameSize(NSSize(width: 280, height: 460))
         popover.contentSize = NSSize(width: 280, height: 460)
         popover.contentViewController = host
@@ -90,7 +122,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             popover.performClose(nil)
         } else {
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
-            // Nudge the popover window down so it doesn't overlap the menu bar.
             DispatchQueue.main.async {
                 if let win = self.popover.contentViewController?.view.window {
                     var f = win.frame

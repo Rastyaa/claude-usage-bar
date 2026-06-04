@@ -180,7 +180,7 @@ final class UsageManager: ObservableObject {
             guard http.statusCode == 200 else {
                 switch http.statusCode {
                 case 429:
-                    // Rate limited — keep existing data silently, timer will retry
+                    errorMessage = "Rate limited — will retry automatically"
                     if usage.lastUpdated == "never" { usage = .mock }
                 case 401:
                     tokenMissing = true
@@ -214,11 +214,12 @@ final class UsageManager: ObservableObject {
     // MARK: Mapping
 
     private static func map(_ raw: RawUsageResponse) -> UsageData {
+        // API returns utilization as 0.0–1.0 fraction; convert to 0–100 for display.
         UsageData(
-            sessionPercent: raw.five_hour.utilization,
+            sessionPercent: raw.five_hour.utilization * 100,
             sessionResetIn: relativeUntil(raw.five_hour.resets_at),
             sessionActive: parseDate(raw.five_hour.resets_at).map { $0.timeIntervalSinceNow > 0 } ?? false,
-            weeklyPercent: raw.seven_day.utilization,
+            weeklyPercent: raw.seven_day.utilization * 100,
             weeklyResetsAt: absoluteReset(raw.seven_day.resets_at),
             weeklyActive: parseDate(raw.seven_day.resets_at).map { $0.timeIntervalSinceNow > 0 } ?? false,
             dailyRoutines: 0,
@@ -286,10 +287,11 @@ final class UsageManager: ObservableObject {
     /// Reads the Claude Code OAuth access token from the credentials file or
     /// the macOS Keychain (same locations claudeusage-mcp uses).
     private static func readOAuthToken() -> String? {
-        let filePath = NSHomeDirectory() + "/.claude/.credentials.json"
-        if let data = FileManager.default.contents(atPath: filePath),
-           let token = parseToken(data) {
-            return token
+        for path in credentialFilePaths() {
+            if let data = FileManager.default.contents(atPath: path),
+               let token = parseToken(data) {
+                return token
+            }
         }
         let task = Process()
         task.executableURL = URL(fileURLWithPath: "/usr/bin/security")
@@ -301,6 +303,19 @@ final class UsageManager: ObservableObject {
         task.waitUntilExit()
         guard task.terminationStatus == 0 else { return nil }
         return parseToken(out.fileHandleForReading.readDataToEndOfFile())
+    }
+
+    /// Candidate `.credentials.json` locations, in priority order. Honors
+    /// `CLAUDE_CONFIG_DIR` — the same override Claude Code itself respects —
+    /// before falling back to the default `~/.claude` directory.
+    private static func credentialFilePaths() -> [String] {
+        var paths: [String] = []
+        if let dir = ProcessInfo.processInfo.environment["CLAUDE_CONFIG_DIR"],
+           !dir.isEmpty {
+            paths.append((dir as NSString).expandingTildeInPath + "/.credentials.json")
+        }
+        paths.append(NSHomeDirectory() + "/.claude/.credentials.json")
+        return paths
     }
 
     private static func parseToken(_ data: Data) -> String? {
