@@ -17,12 +17,20 @@ if [ ! -d "$APP" ]; then
     exit 1
 fi
 
+if [ ! -f Resources/dmg-background.png ]; then
+    echo "▶ Generating DMG background…"
+    swift scripts/generate_dmg_background.swift > /dev/null
+fi
+
 echo "▶ Staging DMG contents…"
 STAGING=$(mktemp -d)
-trap "rm -rf '$STAGING' '$TMP_DMG' '/tmp/dmg_mount_$$' 2>/dev/null; true" EXIT
+MOUNT="/Volumes/${VOLUME}"
+trap "hdiutil detach '$MOUNT' 2>/dev/null; rm -rf '$STAGING' '$TMP_DMG' 2>/dev/null; true" EXIT
 
 cp -R "$APP" "$STAGING/"
 ln -s /Applications "$STAGING/Applications"
+mkdir -p "$STAGING/.background"
+cp Resources/dmg-background.png "$STAGING/.background/dmg-background.png"
 
 echo "▶ Creating writable DMG…"
 hdiutil create \
@@ -32,11 +40,15 @@ hdiutil create \
     "$TMP_DMG" > /dev/null
 
 echo "▶ Mounting to set Finder layout…"
-MOUNT="/tmp/dmg_mount_$$"
-mkdir -p "$MOUNT"
-hdiutil attach -readwrite -noverify -mountpoint "$MOUNT" "$TMP_DMG" > /dev/null
+# Detach any stale mount of the same volume from a previous run.
+hdiutil detach "$MOUNT" 2>/dev/null || true
+# Mount under /Volumes (not a custom mountpoint) so Finder manages the window
+# metadata and actually persists the .DS_Store layout.
+DEVICE=$(hdiutil attach -readwrite -noverify -noautoopen "$TMP_DMG" | egrep '^/dev/' | head -1 | awk '{print $1}')
 
-osascript <<APPLESCRIPT 2>/dev/null || true
+# Finder resolves a hidden ".background:" HFS path unreliably (error -10006),
+# so the background is referenced by its mounted POSIX path as an alias instead.
+if ! osascript <<APPLESCRIPT
 tell application "Finder"
     tell disk "${VOLUME}"
         open
@@ -44,16 +56,23 @@ tell application "Finder"
         set current view of container window to icon view
         set toolbar visible of container window to false
         set statusbar visible of container window to false
-        set bounds of container window to {200, 120, 680, 400}
-        set arrangement of icon view options of container window to not arranged
-        set position of item "${APP_NAME}.app" of container window to {120, 150}
-        set position of item "Applications" of container window to {360, 150}
+        set bounds of container window to {200, 120, 800, 540}
+        set viewOptions to the icon view options of container window
+        set arrangement of viewOptions to not arranged
+        set icon size of viewOptions to 128
+        set text size of viewOptions to 12
+        set background picture of viewOptions to (POSIX file "${MOUNT}/.background/dmg-background.png" as alias)
+        set position of item "${APP_NAME}.app" of container window to {160, 200}
+        set position of item "Applications" of container window to {440, 200}
         update without registering applications
         delay 1
         close
     end tell
 end tell
 APPLESCRIPT
+then
+    echo "⚠️  Finder layout step failed — DMG may open without the custom background."
+fi
 
 # Set volume icon from the app's icns (best-effort)
 if [ -f "Resources/AppIcon.icns" ]; then
@@ -61,7 +80,12 @@ if [ -f "Resources/AppIcon.icns" ]; then
     SetFile -a C "$MOUNT" 2>/dev/null || true
 fi
 
-hdiutil detach "$MOUNT" > /dev/null
+# Ensure the Finder layout (.DS_Store) is flushed to the image before detaching.
+sync
+sleep 2
+[ -f "${MOUNT}/.DS_Store" ] || echo "⚠️  .DS_Store not written — layout may not persist."
+
+hdiutil detach "$DEVICE" > /dev/null
 
 echo "▶ Compressing to final DMG…"
 rm -f "$FINAL_DMG"
