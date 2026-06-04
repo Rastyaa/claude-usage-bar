@@ -83,6 +83,8 @@ final class UsageManager: ObservableObject {
     private var timer: Timer?
     private var countdownTimer: Timer?
     private var lastFetch: Date?
+    private var lastFetchAttempt: Date?
+    private let fetchCooldown: TimeInterval = 30
     // Store raw reset dates so we can recompute display strings without re-fetching.
     private var sessionResetsAt: Date?
     private var weeklyResetsAt: Date?
@@ -156,6 +158,10 @@ final class UsageManager: ObservableObject {
     // MARK: Fetch
 
     func fetch() async {
+        if let last = lastFetchAttempt, -last.timeIntervalSinceNow < fetchCooldown {
+            return
+        }
+        lastFetchAttempt = Date()
         isLoading = true
         defer { isLoading = false; publish() }
 
