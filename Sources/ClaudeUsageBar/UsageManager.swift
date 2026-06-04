@@ -183,7 +183,8 @@ final class UsageManager: ObservableObject {
                     // Rate limited — keep existing data silently, timer will retry
                     if usage.lastUpdated == "never" { usage = .mock }
                 case 401:
-                    errorMessage = "Token expired — please sign in again"
+                    tokenMissing = true
+                    errorMessage = nil
                 default:
                     errorMessage = "API error \(http.statusCode)"
                     if usage.lastUpdated == "never" { usage = .mock }
@@ -216,10 +217,10 @@ final class UsageManager: ObservableObject {
         UsageData(
             sessionPercent: raw.five_hour.utilization,
             sessionResetIn: relativeUntil(raw.five_hour.resets_at),
-            sessionActive: raw.five_hour.resets_at != nil,
+            sessionActive: parseDate(raw.five_hour.resets_at).map { $0.timeIntervalSinceNow > 0 } ?? false,
             weeklyPercent: raw.seven_day.utilization,
             weeklyResetsAt: absoluteReset(raw.seven_day.resets_at),
-            weeklyActive: raw.seven_day.resets_at != nil,
+            weeklyActive: parseDate(raw.seven_day.resets_at).map { $0.timeIntervalSinceNow > 0 } ?? false,
             dailyRoutines: 0,
             dailyRoutinesMax: 5,
             usageCredits: raw.extra_usage?.is_enabled ?? false,
