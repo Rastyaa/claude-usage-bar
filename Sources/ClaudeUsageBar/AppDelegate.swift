@@ -27,12 +27,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             NSLog("ClaudeUsageBar login-item enabled -> %@", String(result))
         }
 
-        // Debug aid: fire a sample notification to verify the path works.
-        if ProcessInfo.processInfo.environment["CUB_TEST_NOTIFY"] != nil {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
-                self?.manager.sendTestNotification()
-            }
-        }
+        // Debug aid: fire a sample notification (disabled — requires Developer ID signing).
+        // if ProcessInfo.processInfo.environment["CUB_TEST_NOTIFY"] != nil {
+        //     DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
+        //         self?.manager.sendTestNotification()
+        //     }
+        // }
 
         // Debug aid: render the popover UI in a fixed standalone window so it
         // can be screenshotted regardless of the notch / menu-bar crowding.

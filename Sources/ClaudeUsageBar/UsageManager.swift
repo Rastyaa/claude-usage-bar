@@ -1,6 +1,6 @@
 import Foundation
 import ServiceManagement
-import UserNotifications
+// import UserNotifications — disabled, see MARK: Notifications
 
 // ─── Raw API shape ───────────────────────────────────────────────────────────
 // Mirrors https://api.anthropic.com/api/oauth/usage (the same endpoint that
@@ -87,14 +87,13 @@ final class UsageManager: ObservableObject {
     private var sessionResetsAt: Date?
     private var weeklyResetsAt: Date?
 
-    // Notification de-bounce: fire once per threshold crossing.
-    private var notified80 = false
-    private var notified95 = false
+    // private var notified80 = false  // disabled, see MARK: Notifications
+    // private var notified95 = false
 
     // MARK: Lifecycle
 
     func start() {
-        requestNotificationAuthorization()
+        // requestNotificationAuthorization() — disabled, see MARK: Notifications below
         Task { await fetch() }
         // Fetch fresh data from the API every 5 minutes.
         timer = Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { [weak self] _ in
@@ -197,7 +196,7 @@ final class UsageManager: ObservableObject {
             usage = Self.map(raw)
             lastFetch = Date()
             errorMessage = nil
-            checkNotifications(usage.sessionPercent)
+            // checkNotifications(usage.sessionPercent) — disabled, see MARK: Notifications below
         } catch {
             errorMessage = error.localizedDescription
             if usage.lastUpdated == "never" { usage = .mock }
@@ -313,55 +312,63 @@ final class UsageManager: ObservableObject {
     }
 
     // MARK: Notifications
+    //
+    // ⚠️  DISABLED — requires a Developer ID certificate to work on macOS.
+    //
+    // macOS suppresses UserNotifications for ad-hoc-signed apps (codesign --sign -).
+    // To enable: sign the app with a Developer ID certificate (Apple Developer Program,
+    // $99/year), then uncomment the two call sites above and re-enable the methods below.
+    //
+    // Contributors with a Developer ID can re-enable this by:
+    //   1. Uncommenting `requestNotificationAuthorization()` in start()
+    //   2. Uncommenting `checkNotifications(...)` in fetch()
+    //   3. Signing with: codesign --force --deep --sign "Developer ID Application: ..." ClaudeUsageBar.app
 
-    private func requestNotificationAuthorization() {
-        // UNUserNotificationCenter requires a real bundle; skip when running as
-        // a bare `swift run` executable to avoid a crash.
-        guard Bundle.main.bundleIdentifier != nil else { return }
-        UNUserNotificationCenter.current()
-            .requestAuthorization(options: [.alert, .sound]) { granted, error in
-                if let error { NSLog("ClaudeUsageBar notif auth: %@", error.localizedDescription) }
-                else if !granted { NSLog("ClaudeUsageBar: notifications not permitted") }
-            }
-    }
-
-    private func checkNotifications(_ pct: Double) {
-        if pct < 80 {
-            notified80 = false
-            notified95 = false
-        } else if pct < 95 {
-            notified95 = false
-            if !notified80 {
-                notify(title: "Claude usage at \(Int(pct))%",
-                       body: "You've used 80% of your 5-hour session.")
-                notified80 = true
-            }
-        } else {
-            notified80 = true
-            if !notified95 {
-                notify(title: "Claude usage at \(Int(pct))%",
-                       body: "You're nearly at your session limit.")
-                notified95 = true
-            }
-        }
-    }
-
-    /// Fires a sample notification (used to verify the notification path).
-    func sendTestNotification() {
-        notify(title: "Claude usage at 80%",
-               body: "Notification test — thresholds 80% and 95% are wired up.")
-    }
-
-    private func notify(title: String, body: String) {
-        guard Bundle.main.bundleIdentifier != nil else { return }
-        let content = UNMutableNotificationContent()
-        content.title = title
-        content.body = body
-        content.sound = .default
-        let request = UNNotificationRequest(
-            identifier: UUID().uuidString, content: content, trigger: nil)
-        UNUserNotificationCenter.current().add(request) { error in
-            if let error { NSLog("ClaudeUsageBar notif: %@", error.localizedDescription) }
-        }
-    }
+//    private func requestNotificationAuthorization() {
+//        guard Bundle.main.bundleIdentifier != nil else { return }
+//        UNUserNotificationCenter.current()
+//            .requestAuthorization(options: [.alert, .sound]) { granted, error in
+//                if let error { NSLog("ClaudeUsageBar notif auth: %@", error.localizedDescription) }
+//                else if !granted { NSLog("ClaudeUsageBar: notifications not permitted") }
+//            }
+//    }
+//
+//    private func checkNotifications(_ pct: Double) {
+//        if pct < 80 {
+//            notified80 = false
+//            notified95 = false
+//        } else if pct < 95 {
+//            notified95 = false
+//            if !notified80 {
+//                notify(title: "Claude usage at \(Int(pct))%",
+//                       body: "You've used 80% of your 5-hour session.")
+//                notified80 = true
+//            }
+//        } else {
+//            notified80 = true
+//            if !notified95 {
+//                notify(title: "Claude usage at \(Int(pct))%",
+//                       body: "You're nearly at your session limit.")
+//                notified95 = true
+//            }
+//        }
+//    }
+//
+//    func sendTestNotification() {
+//        notify(title: "Claude usage at 80%",
+//               body: "Notification test — thresholds 80% and 95% are wired up.")
+//    }
+//
+//    private func notify(title: String, body: String) {
+//        guard Bundle.main.bundleIdentifier != nil else { return }
+//        let content = UNMutableNotificationContent()
+//        content.title = title
+//        content.body = body
+//        content.sound = .default
+//        let request = UNNotificationRequest(
+//            identifier: UUID().uuidString, content: content, trigger: nil)
+//        UNUserNotificationCenter.current().add(request) { error in
+//            if let error { NSLog("ClaudeUsageBar notif: %@", error.localizedDescription) }
+//        }
+//    }
 }
