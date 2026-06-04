@@ -83,8 +83,6 @@ final class UsageManager: ObservableObject {
     private var timer: Timer?
     private var countdownTimer: Timer?
     private var lastFetch: Date?
-    private var lastFetchAttempt: Date?
-    private let fetchCooldown: TimeInterval = 30
     // Store raw reset dates so we can recompute display strings without re-fetching.
     private var sessionResetsAt: Date?
     private var weeklyResetsAt: Date?
@@ -158,10 +156,6 @@ final class UsageManager: ObservableObject {
     // MARK: Fetch
 
     func fetch() async {
-        if let last = lastFetchAttempt, -last.timeIntervalSinceNow < fetchCooldown {
-            return
-        }
-        lastFetchAttempt = Date()
         isLoading = true
         defer { isLoading = false; publish() }
 
@@ -186,11 +180,15 @@ final class UsageManager: ObservableObject {
             }
             guard http.statusCode == 200 else {
                 switch http.statusCode {
-                case 429: errorMessage = "Rate limited — will retry automatically"
-                case 401: errorMessage = "Token expired — please sign in again"
-                default:  errorMessage = "API error \(http.statusCode)"
+                case 429:
+                    // Rate limited — keep existing data silently, timer will retry
+                    if usage.lastUpdated == "never" { usage = .mock }
+                case 401:
+                    errorMessage = "Token expired — please sign in again"
+                default:
+                    errorMessage = "API error \(http.statusCode)"
+                    if usage.lastUpdated == "never" { usage = .mock }
                 }
-                if usage.lastUpdated == "never" { usage = .mock }
                 return
             }
             let raw = try JSONDecoder().decode(RawUsageResponse.self, from: data)
