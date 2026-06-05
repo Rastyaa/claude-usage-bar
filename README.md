@@ -1,10 +1,19 @@
-# Claude Usage
+<p align="center">
+  <img src="assets/icon.png" width="120" alt="Claude Usage icon">
+</p>
 
-> A lightweight macOS menu bar app that shows your Claude Pro/Max usage in real time.
+<h1 align="center">Claude Usage</h1>
 
-![macOS](https://img.shields.io/badge/macOS-13%2B-black?logo=apple)
-![Swift](https://img.shields.io/badge/Swift-6-orange?logo=swift)
-![License](https://img.shields.io/badge/license-MIT-blue)
+<p align="center">
+  A lightweight macOS menu bar app that shows your Claude Pro/Max usage in real time.
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/macOS-13%2B-black?logo=apple" alt="macOS 13+">
+  <img src="https://img.shields.io/badge/Swift-6-orange?logo=swift" alt="Swift 6">
+  <img src="https://img.shields.io/badge/dependencies-zero-brightgreen" alt="Zero dependencies">
+  <img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT License">
+</p>
 
 ---
 
@@ -16,27 +25,62 @@
 🟠 61% · 2h 8m
 ```
 
-Click the icon to open the full detail popover:
+The menu bar title is color-coded and always reflects the real state:
 
-- **Session usage** — 5-hour rolling window with countdown timer
+| State | Menu bar |
+|-------|----------|
+| Active session | `🟢 / 🟠 / 🔴  61% · 2h 8m` |
+| No active session | `○ No session` |
+| Token expired | `⚠ Expired` |
+| Not signed in | `○ Sign in` |
+
+Click the icon to open the detail popover.
+
+---
+
+## Screens
+
+<table>
+<tr>
+<td align="center" width="33%">
+<img src="assets/popover.png" width="230" alt="Usage popover"><br>
+<b>Usage</b><br>
+<sub>Session, weekly, routines & credits</sub>
+</td>
+<td align="center" width="33%">
+<img src="assets/setup.png" width="230" alt="Connect Claude Code"><br>
+<b>Connect Claude Code</b><br>
+<sub>Shown when no credentials are found</sub>
+</td>
+<td align="center" width="33%">
+<img src="assets/expired.png" width="230" alt="Session expired"><br>
+<b>Session expired</b><br>
+<sub>Token expired or Keychain locked</sub>
+</td>
+</tr>
+</table>
+
+The main popover shows:
+
+- **Session usage** — 5-hour rolling window with a live countdown
 - **Weekly usage** — 7-day window with reset day/time
 - **Daily Routines** — quota at a glance
 - **Usage Credits** — ON/OFF status
 - **Launch at Login** toggle
-- One-click **Quit**
+- One-click **Refresh** and **Quit**
 
-When a session hasn't started yet, it shows **0%** and prompts you to start a conversation — no confusing stale numbers.
+When the token expires it no longer pretends you're signed out — it shows a clear **Session expired** screen and refreshes automatically the next time you use Claude Code.
 
 ---
 
 ## Features
 
-- **Real-time data** — polls the Anthropic usage endpoint every 5 minutes
+- **Real-time data** — polls the Anthropic usage endpoint every 5 minutes, with a 60-second local countdown in between
 - **Color-coded indicators** — 🟢 0–60% · 🟠 61–85% · 🔴 86–100%
-- **Smart notifications** — alerts at 80% and 95% session usage
-- **Zero dependencies** — pure Swift, no Node, no Electron
-- **Tiny footprint** — menu-bar only, no Dock icon, no background processes
-- **Sign-in prompt** — graceful UI when Claude Code credentials aren't found
+- **Accurate auth states** — tells "not signed in", "expired/locked", and "active" apart instead of showing a misleading sign-in screen
+- **Flexible credential lookup** — honors `CLAUDE_CONFIG_DIR`, the default `~/.claude`, and the macOS Keychain
+- **Zero dependencies** — pure Swift + SwiftUI/AppKit, no Node, no Electron
+- **Tiny footprint** — menu-bar only, no Dock icon
 - **Launch at Login** — via `SMAppService`
 
 ---
@@ -44,8 +88,9 @@ When a session hasn't started yet, it shows **0%** and prompts you to start a co
 ## Requirements
 
 - macOS 13 Ventura or later
-- [Claude Code](https://claude.ai/download) installed and signed in
-  *(the app reads your existing OAuth token — no separate login needed)*
+- [Claude Code](https://claude.com/claude-code) **or** the [Claude Code VS Code extension](https://marketplace.visualstudio.com/items?itemName=anthropic.claude-code), installed and signed in
+
+> The app reads your existing Claude Code OAuth token — there is no separate login.
 
 ---
 
@@ -53,9 +98,15 @@ When a session hasn't started yet, it shows **0%** and prompts you to start a co
 
 ### Option A — DMG (recommended)
 
-1. Download the latest `Claude.Usage-x.x.dmg` from [Releases](../../releases)
-2. Open the DMG and drag **Claude Usage** to your Applications folder
-3. Launch from Applications
+1. Download the latest `ClaudeUsageBar-x.x.x.dmg` from [Releases](../../releases)
+2. Open the DMG and drag **ClaudeUsageBar** onto **Applications**
+3. Launch it from Applications
+
+<p align="center">
+  <img src="assets/dmg.png" width="420" alt="DMG installer window">
+</p>
+
+> On first launch, macOS may ask to allow access to the *Claude Code-credentials* Keychain item — click **Always Allow**.
 
 ### Option B — Build from source
 
@@ -67,33 +118,38 @@ cp -R ClaudeUsageBar.app ~/Applications/
 open ~/Applications/ClaudeUsageBar.app
 ```
 
-> **Tip:** Install to `~/Applications/` (not just run from the project folder) so Launch at Login and notifications work correctly.
+> **Tip:** Install to `~/Applications/` (not just run from the project folder) so Launch at Login persists.
 
 ---
 
 ## How it works
 
-Claude Usage reads your OAuth token from the same place Claude Code stores it:
+Claude Usage reads your OAuth token from the same places Claude Code stores it, in order:
 
-1. `~/.claude/.credentials.json`
-2. macOS Keychain (`Claude Code-credentials`)
+1. `$CLAUDE_CONFIG_DIR/.credentials.json` (if the variable is set)
+2. `~/.claude/.credentials.json`
+3. macOS Keychain — service `Claude Code-credentials`
 
-It then calls `https://api.anthropic.com/api/oauth/usage` directly using `URLSession` — no subprocess, no extra runtime required.
+It then calls `https://api.anthropic.com/api/oauth/usage` directly with `URLSession` — no subprocess, no extra runtime.
+
+If the token can't be read or the API returns `401`, the app distinguishes a genuine sign-out (no credentials anywhere) from an expired/locked token (credentials present), and shows the matching screen.
 
 ---
 
 ## Build & distribute
 
 ```bash
-# Dev run (no bundle features)
+# Dev run (no bundle features like Launch at Login)
 swift run
 
-# Build .app bundle
+# Build the release .app bundle
 ./make_app.sh
 
-# Build distributable DMG
+# Package a distributable DMG installer
 ./make_dmg.sh
 ```
+
+The DMG background (title, arrow, Applications icon) is generated by `scripts/generate_dmg_background.swift` and embedded automatically by `make_dmg.sh`.
 
 ---
 
@@ -103,22 +159,19 @@ swift run
 Sources/ClaudeUsageBar/
 ├── main.swift          Entry point
 ├── AppDelegate.swift   NSStatusItem + NSPopover wiring
-├── UsageManager.swift  API fetch, polling, model, notifications
-└── PopoverView.swift   SwiftUI dark popover card
+├── UsageManager.swift  API fetch, polling, model, login item
+└── PopoverView.swift   SwiftUI dark popover + setup/expired screens
 Resources/
-└── AppIcon.icns        App icon (all sizes)
+├── AppIcon.icns        App icon (all sizes)
+└── dmg-background.png   DMG installer window background
+scripts/
+├── generate_icon.swift            Regenerates AppIcon.icns
+└── generate_dmg_background.swift   Regenerates the DMG background
+assets/                 README screenshots
 Info.plist              Bundle config (LSUIElement, bundle ID)
 make_app.sh             Builds the release .app bundle
 make_dmg.sh             Packages the app into a DMG installer
-scripts/
-└── generate_icon.swift Regenerates AppIcon.icns from source
 ```
-
----
-
-## Notifications caveat
-
-Notification code is complete, but macOS **suppresses alerts for ad-hoc-signed apps**. To receive banners, sign the bundle with a stable identity (Developer ID certificate or trusted self-signed cert).
 
 ---
 
@@ -126,15 +179,20 @@ Notification code is complete, but macOS **suppresses alerts for ad-hoc-signed a
 
 | Variable | Effect |
 |----------|--------|
-| `CUB_DEBUG_POPOVER=1` | Renders popover in a standalone window |
-| `CUB_TEST_NOTIFY=1` | Fires a sample notification on launch |
-| `CUB_TEST_LOGIN=1` / `=0` | Enables / disables the login item |
+| `CUB_DEBUG_POPOVER=1` | Renders the popover in a standalone window for screenshots |
+| `CUB_TEST_LOGIN=1` / `=0` | Enables / disables the Launch-at-Login item on launch |
+
+---
+
+## Notifications
+
+Usage-threshold notification code (alerts at 80% / 95%) is included but **disabled**: macOS suppresses `UserNotifications` for ad-hoc-signed apps. To enable banners, sign the bundle with a Developer ID certificate and re-enable the two call sites noted in `UsageManager.swift`.
 
 ---
 
 ## Contributing
 
-Contributions are welcome! Feel free to open an issue or submit a pull request.
+Contributions are welcome — open an issue or a pull request.
 
 1. Fork the repo
 2. Create a feature branch (`git checkout -b feat/my-feature`)
