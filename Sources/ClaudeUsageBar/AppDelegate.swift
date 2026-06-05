@@ -16,8 +16,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         setupStatusItem()
         setupPopover()
 
-        manager.onUpdate = { [weak self] data in
-            self?.statusItem.button?.title = data.menuBarTitle
+        manager.onUpdate = { [weak self] title in
+            self?.statusItem.button?.title = title
         }
         manager.start()
 

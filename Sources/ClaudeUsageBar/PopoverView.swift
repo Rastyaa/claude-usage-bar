@@ -216,6 +216,59 @@ private struct SetupView: View {
     }
 }
 
+// ─── Expired / locked screen ──────────────────────────────────────────────────
+// Shown when credentials exist but the token is rejected (401) or can't be read
+// (Keychain locked). The user is still signed in — the token just needs a refresh,
+// which Claude Code does automatically the next time it runs.
+
+private struct ExpiredView: View {
+    let onRetry: () -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Spacer(minLength: 12)
+
+            ZStack {
+                Circle()
+                    .fill(clOrange.opacity(0.12))
+                    .frame(width: 64, height: 64)
+                Image(systemName: "clock.arrow.circlepath")
+                    .font(.system(size: 26, weight: .medium))
+                    .foregroundColor(clOrange)
+            }
+            .padding(.bottom, 16)
+
+            Text("Session expired")
+                .font(.system(size: 17, weight: .bold))
+                .foregroundColor(.white)
+                .padding(.bottom, 6)
+
+            Text("Your Claude Code token expired or the Keychain is locked. Run any Claude Code command to refresh it, then try again.")
+                .font(.system(size: 12))
+                .foregroundColor(.white.opacity(0.45))
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 24)
+                .padding(.bottom, 22)
+
+            Button(action: onRetry) {
+                Text("Try Again")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.black)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                    .background(RoundedRectangle(cornerRadius: 10).fill(clOrange))
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, 24)
+
+            Spacer(minLength: 12)
+        }
+        .frame(width: 280, height: 460)
+        .background(bgMain)
+    }
+}
+
 // ─── Popover root ─────────────────────────────────────────────────────────────
 
 struct PopoverView: View {
@@ -227,6 +280,8 @@ struct PopoverView: View {
     var body: some View {
         if manager.tokenMissing {
             SetupView { Task { await manager.fetch() } }
+        } else if manager.tokenExpired {
+            ExpiredView { Task { await manager.fetch() } }
         } else {
             VStack(alignment: .leading, spacing: 10) {
 

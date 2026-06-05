@@ -74,10 +74,19 @@ final class UsageManager: ObservableObject {
     @Published private(set) var isLoading = false
     @Published private(set) var errorMessage: String?
     @Published private(set) var tokenMissing = false
+    @Published private(set) var tokenExpired = false
 
-    /// Called on the main actor after every state change so the AppDelegate
-    /// can refresh the menu-bar title.
-    var onUpdate: ((UsageData) -> Void)?
+    /// Called on the main actor after every state change with the menu-bar
+    /// title so the AppDelegate can refresh the status item.
+    var onUpdate: ((String) -> Void)?
+
+    /// Menu-bar text that reflects auth state, so it never shows stale usage
+    /// while the token is missing or expired.
+    private var statusTitle: String {
+        if tokenMissing { return "○ Sign in" }
+        if tokenExpired { return "⚠ Expired" }
+        return usage.menuBarTitle
+    }
 
     private let endpoint = URL(string: "https://api.anthropic.com/api/oauth/usage")!
     private var timer: Timer?
@@ -122,7 +131,7 @@ final class UsageManager: ObservableObject {
             usage.weeklyResetsAt = Self.absoluteReset(d)
         }
         usage.lastUpdated = lastFetch.map { Self.relativeSince($0) } ?? usage.lastUpdated
-        onUpdate?(usage)
+        onUpdate?(statusTitle)
     }
 
     // MARK: Launch at login
@@ -159,11 +168,20 @@ final class UsageManager: ObservableObject {
         defer { isLoading = false; publish() }
 
         guard let token = Self.readOAuthToken() else {
-            tokenMissing = true
+            // Credentials present but unreadable (e.g. Keychain locked) is an
+            // expired/locked state, not a sign-out — keep them apart.
+            if Self.credentialsExist() {
+                tokenExpired = true
+                tokenMissing = false
+            } else {
+                tokenMissing = true
+                tokenExpired = false
+            }
             errorMessage = nil
             return
         }
         tokenMissing = false
+        tokenExpired = false
 
         var request = URLRequest(url: endpoint)
         request.httpMethod = "GET"
@@ -183,7 +201,8 @@ final class UsageManager: ObservableObject {
                     errorMessage = "Rate limited — will retry automatically"
                     if usage.lastUpdated == "never" { usage = .mock }
                 case 401:
-                    tokenMissing = true
+                    // The token expired — Claude Code refreshes it on next use.
+                    tokenExpired = true
                     errorMessage = nil
                 default:
                     errorMessage = "API error \(http.statusCode)"
@@ -208,7 +227,7 @@ final class UsageManager: ObservableObject {
         if let last = lastFetch {
             usage.lastUpdated = Self.relativeSince(last)
         }
-        onUpdate?(usage)
+        onUpdate?(statusTitle)
     }
 
     // MARK: Mapping
@@ -316,6 +335,24 @@ final class UsageManager: ObservableObject {
         }
         paths.append(NSHomeDirectory() + "/.claude/.credentials.json")
         return paths
+    }
+
+    /// True when a credentials file or the Keychain item exists, even if the
+    /// token itself can't currently be read (e.g. Keychain locked, expired).
+    /// Distinguishes "expired / locked" from "never signed in". Reads only the
+    /// item's metadata (no `-w`), so it never triggers an unlock prompt.
+    private static func credentialsExist() -> Bool {
+        for path in credentialFilePaths() where FileManager.default.fileExists(atPath: path) {
+            return true
+        }
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: "/usr/bin/security")
+        task.arguments = ["find-generic-password", "-s", "Claude Code-credentials"]
+        task.standardOutput = Pipe()
+        task.standardError = Pipe()
+        guard (try? task.run()) != nil else { return false }
+        task.waitUntilExit()
+        return task.terminationStatus == 0
     }
 
     private static func parseToken(_ data: Data) -> String? {
