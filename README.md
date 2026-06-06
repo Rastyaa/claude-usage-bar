@@ -75,7 +75,7 @@ When the token expires it no longer pretends you're signed out — it shows a cl
 
 ## Features
 
-- **Real-time data** — polls the Anthropic usage endpoint every 5 minutes, with a 60-second local countdown in between
+- **Real-time data** — polls the Anthropic usage endpoint every 2 minutes, with a 60-second local countdown in between
 - **Color-coded indicators** — 🟢 0–60% · 🟠 61–85% · 🔴 86–100%
 - **Accurate auth states** — tells "not signed in", "expired/locked", and "active" apart instead of showing a misleading sign-in screen
 - **Flexible credential lookup** — honors `CLAUDE_CONFIG_DIR`, the default `~/.claude`, and the macOS Keychain
