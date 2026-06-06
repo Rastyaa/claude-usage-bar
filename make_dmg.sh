@@ -91,5 +91,10 @@ echo "▶ Compressing to final DMG…"
 rm -f "$FINAL_DMG"
 hdiutil convert "$TMP_DMG" -format UDZO -o "$FINAL_DMG" > /dev/null
 
+# Give the .dmg file itself the app icon in Finder (separate from the volume icon).
+if [ -f Resources/AppIcon.icns ]; then
+    swift scripts/set_file_icon.swift Resources/AppIcon.icns "$FINAL_DMG" > /dev/null 2>&1 || true
+fi
+
 echo "✅ ${FINAL_DMG} ready"
 echo "   Install: open ${FINAL_DMG}, then drag ${APP_NAME} → Applications"
