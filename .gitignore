@@ -3,6 +3,7 @@
 
 # Swift build artifacts
 /.build
+/.build-dmg
 /Packages
 *.app
 *.dmg

@@ -8,9 +8,12 @@ cd "$(dirname "$0")"
 APP_NAME="ClaudeUsageBar"
 APP="${APP_NAME}.app"
 VERSION=$(defaults read "$(pwd)/${APP}/Contents/Info" CFBundleShortVersionString 2>/dev/null || echo "1.0")
-TMP_DMG="${APP_NAME}-tmp.dmg"
-FINAL_DMG="${APP_NAME}-${VERSION}.dmg"
+OUT_DIR=".build-dmg"
+TMP_DMG="${OUT_DIR}/${APP_NAME}-tmp.dmg"
+FINAL_DMG="${OUT_DIR}/${APP_NAME}-${VERSION}.dmg"
 VOLUME="${APP_NAME} ${VERSION}"
+
+mkdir -p "$OUT_DIR"
 
 if [ ! -d "$APP" ]; then
     echo "❌ ${APP} not found — run ./make_app.sh first"
@@ -25,7 +28,7 @@ fi
 echo "▶ Staging DMG contents…"
 STAGING=$(mktemp -d)
 MOUNT="/Volumes/${VOLUME}"
-trap "hdiutil detach '$MOUNT' 2>/dev/null; rm -rf '$STAGING' '$TMP_DMG' 2>/dev/null; true" EXIT
+trap "hdiutil detach \"$MOUNT\" 2>/dev/null; rm -rf \"$STAGING\" \"$TMP_DMG\" 2>/dev/null; true" EXIT
 
 cp -R "$APP" "$STAGING/"
 ln -s /Applications "$STAGING/Applications"
@@ -90,6 +93,7 @@ hdiutil detach "$DEVICE" > /dev/null
 echo "▶ Compressing to final DMG…"
 rm -f "$FINAL_DMG"
 hdiutil convert "$TMP_DMG" -format UDZO -o "$FINAL_DMG" > /dev/null
+rm -f "$TMP_DMG"
 
 # Give the .dmg file itself the app icon in Finder (separate from the volume icon).
 if [ -f Resources/AppIcon.icns ]; then

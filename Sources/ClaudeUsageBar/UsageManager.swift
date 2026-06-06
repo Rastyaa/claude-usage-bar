@@ -164,6 +164,7 @@ final class UsageManager: ObservableObject {
     // MARK: Fetch
 
     func fetch() async {
+        guard !isLoading else { return }
         isLoading = true
         defer { isLoading = false; publish() }
 
@@ -199,14 +200,12 @@ final class UsageManager: ObservableObject {
                 switch http.statusCode {
                 case 429:
                     errorMessage = "Rate limited — will retry automatically"
-                    if usage.lastUpdated == "never" { usage = .mock }
                 case 401:
                     // The token expired — Claude Code refreshes it on next use.
                     tokenExpired = true
                     errorMessage = nil
                 default:
                     errorMessage = "API error \(http.statusCode)"
-                    if usage.lastUpdated == "never" { usage = .mock }
                 }
                 return
             }
@@ -219,7 +218,6 @@ final class UsageManager: ObservableObject {
             // checkNotifications(usage.sessionPercent) — disabled, see MARK: Notifications below
         } catch {
             errorMessage = error.localizedDescription
-            if usage.lastUpdated == "never" { usage = .mock }
         }
     }
 
@@ -233,12 +231,12 @@ final class UsageManager: ObservableObject {
     // MARK: Mapping
 
     private static func map(_ raw: RawUsageResponse) -> UsageData {
-        // API returns utilization as 0.0–1.0 fraction; convert to 0–100 for display.
+        // API returns utilization already as a 0–100 percentage (not a 0.0–1.0 fraction).
         UsageData(
-            sessionPercent: raw.five_hour.utilization * 100,
+            sessionPercent: raw.five_hour.utilization,
             sessionResetIn: relativeUntil(raw.five_hour.resets_at),
             sessionActive: parseDate(raw.five_hour.resets_at).map { $0.timeIntervalSinceNow > 0 } ?? false,
-            weeklyPercent: raw.seven_day.utilization * 100,
+            weeklyPercent: raw.seven_day.utilization,
             weeklyResetsAt: absoluteReset(raw.seven_day.resets_at),
             weeklyActive: parseDate(raw.seven_day.resets_at).map { $0.timeIntervalSinceNow > 0 } ?? false,
             dailyRoutines: 0,
@@ -361,6 +359,13 @@ final class UsageManager: ObservableObject {
             let oauth = obj["claudeAiOauth"] as? [String: Any],
             let token = oauth["accessToken"] as? String, !token.isEmpty
         else { return nil }
+        // Return nil for expired tokens so the caller shows the "Session expired"
+        // screen instead of sending a request the API will reject.
+        if let raw = oauth["expiresAt"] as? Double {
+            // expiresAt may be milliseconds (>1e12) or seconds — normalise to seconds.
+            let secs = raw > 1e12 ? raw / 1000 : raw
+            if Date(timeIntervalSince1970: secs) < Date() { return nil }
+        }
         return token
     }
 

@@ -273,7 +273,6 @@ private struct ExpiredView: View {
 
 struct PopoverView: View {
     @ObservedObject var manager: UsageManager
-    @State private var spinAngle: Double = 0
 
     private var usage: UsageData { manager.usage }
 
@@ -294,20 +293,17 @@ struct PopoverView: View {
                     Button {
                         Task { await manager.fetch() }
                     } label: {
-                        Image(systemName: "arrow.clockwise")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundColor(.white.opacity(manager.isLoading ? 0.8 : 0.45))
-                            .rotationEffect(.degrees(spinAngle))
-                            .onChange(of: manager.isLoading) { loading in
-                                if loading {
-                                    spinAngle = 0
-                                    withAnimation(.linear(duration: 0.8).repeatForever(autoreverses: false)) {
-                                        spinAngle = 360
-                                    }
-                                } else {
-                                    withAnimation(.none) { spinAngle = 0 }
-                                }
-                            }
+                        if manager.isLoading {
+                            ProgressView()
+                                .progressViewStyle(.circular)
+                                .controlSize(.small)
+                                .tint(.white.opacity(0.8))
+                                .frame(width: 16, height: 16)
+                        } else {
+                            Image(systemName: "arrow.clockwise")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundColor(.white.opacity(0.45))
+                        }
                     }
                     .buttonStyle(.plain)
                 }
