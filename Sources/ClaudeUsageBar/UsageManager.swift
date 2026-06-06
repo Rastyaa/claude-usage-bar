@@ -104,8 +104,8 @@ final class UsageManager: ObservableObject {
     func start() {
         // requestNotificationAuthorization() — disabled, see MARK: Notifications below
         Task { await fetch() }
-        // Fetch fresh data from the API every 5 minutes.
-        timer = Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { [weak self] _ in
+        // Fetch fresh data from the API every 2 minutes.
+        timer = Timer.scheduledTimer(withTimeInterval: 120, repeats: true) { [weak self] _ in
             Task { await self?.fetch() }
         }
         // Update the countdown display every 60s without hitting the API.
